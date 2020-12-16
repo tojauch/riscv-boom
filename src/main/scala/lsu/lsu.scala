@@ -558,7 +558,7 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
     //  - Store commits are lowest priority, since they don't "block" younger instructions unless stq fills up
 
     //mocifications made by tojauch: 
-    when(LSUExeIO.bits.uop.br_mask === UInt(0,Width=4)){ //only fire load if it is not speculative (br_mask = zero)
+    when(ldq(i).bits.uop.br_mask === UInt(0,Width=4)){ //only fire load if it is not speculative (br_mask = zero)
         will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , true , true , true , false) // TLB , DC , LCAM 
     }.otherwise{
         tlb_avail = false.B
