@@ -561,8 +561,7 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
     when(exe_req(w).bits.uop.br_mask === 0.U){ //only fire load if it is not speculative (br_mask = zero)
         will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , true , true , true , false) // TLB , DC , LCAM 
     }.otherwise{
-        will_fire_load_incoming (w) := false.B
-        tlb_avail = false.B
+        will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , false , false , false , false)
     }
     // end of modifications
 
