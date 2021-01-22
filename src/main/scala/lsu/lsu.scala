@@ -560,10 +560,14 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
     //#######################################################################################################################################################################
     //modifications made by tojauch:
     when(exe_req(w).bits.uop.br_mask === 0.U){ //only fire load if it is not speculative (br_mask = zero)
-        will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , true , true , true , false) // TLB , DC , LCAM 
-    }.otherwise{
+        //will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , true , true , true , false) // TLB , DC , LCAM
+
+        //move logic to ROB
 
         val load_store_instr = Bool() //load or store instructions exist between operation and ROB head?
+
+        //check LAQ/SAQ if entry exists
+        //if it exists, check if already translated (address_is_virtual == false)
 
         for (i <- Rob.GetRowIdx(Rob.rob_head) until Rob.GetRowIdx(exe_req(w)/*current Execution*/)) {
             when (true/*i.instr_type === load or i.instr_type === store*/) {
@@ -582,6 +586,8 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
                 will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , false , false , false , false)
             }
         }
+    }.otherwise{
+        will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , false , false , false , false)
     }
 
     // end of modifications
