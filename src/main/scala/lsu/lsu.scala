@@ -557,13 +557,36 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
     //  - Prioritize releases, this speeds up cache line writebacks and refills
     //  - Store commits are lowest priority, since they don't "block" younger instructions unless stq fills up
 
-    //mocifications made by tojauch: 
+    //#######################################################################################################################################################################
+    //modifications made by tojauch:
     when(exe_req(w).bits.uop.br_mask === 0.U){ //only fire load if it is not speculative (br_mask = zero)
         will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , true , true , true , false) // TLB , DC , LCAM 
     }.otherwise{
-        will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , false , false , false , false)
+
+        val load_store_instr = Bool() //load or store instructions exist between operation and ROB head?
+
+        for (i <- Rob.GetRowIdx(Rob.rob_head) until Rob.GetRowIdx(exe_req(w)/*current Execution*/)) {
+            when (true/*i.instr_type === load or i.instr_type === store*/) {
+                load_store_instr = true.B
+            }.otherwise{
+                load_store_instr = false.B
+            }
+        }
+
+        when(load_store_instr === false.B){ //no load or store between operation and ROB head
+            will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , true , true , true , false) // TLB , DC , LCAM
+        }.otherwise{
+            when(false/*existing load / store already translated*/){
+                will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , true , true , true , false) // TLB , DC , LCAM
+            }.otherwise{
+                will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , false , false , false , false)
+            }
+        }
     }
+
     // end of modifications
+    //#######################################################################################################################################################################
+
 
     will_fire_stad_incoming (w) := lsu_sched(can_fire_stad_incoming (w) , true , false, true , true)  // TLB ,    , LCAM , ROB
     will_fire_sta_incoming  (w) := lsu_sched(can_fire_sta_incoming  (w) , true , false, true , true)  // TLB ,    , LCAM , ROB
