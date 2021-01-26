@@ -566,13 +566,13 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
         //check LAQ/SAQ if entry exists
         for (i <- 0 until numLdqEntries){
             when(ldq(i).valid === true.B){
-                entry_cnt := entry_cnt + 1.U
+                entry_cnt = entry_cnt + 1.U
             }
         }
 
         for (i <- 0 until numStqEntries){
           when(stq(i).valid === true.B){
-            entry_cnt := entry_cnt + 1.U
+            entry_cnt = entry_cnt + 1
           }
         }
 
