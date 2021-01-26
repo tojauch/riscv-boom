@@ -560,27 +560,26 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
     //#######################################################################################################################################################################
     //modifications made by tojauch:
     when(exe_req(w).bits.uop.br_mask === 0.U){ //only fire load if it is not speculative (br_mask = zero)
-        //will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , true , true , true , false) // TLB , DC , LCAM
 
-        //move logic to ROB
-
-        val load_store_instr = Bool() //load or store instructions exist between operation and ROB head?
+        val entry_cnt = 0.U  //load or store instructions exist between operation and ROB head?
 
         //check LAQ/SAQ if entry exists
-        //if it exists, check if already translated (address_is_virtual == false)
-
-        for (i <- Rob.GetRowIdx(Rob.rob_head) until Rob.GetRowIdx(exe_req(w)/*current Execution*/)) {
-            when (true/*i.instr_type === load or i.instr_type === store*/) {
-                load_store_instr = true.B
-            }.otherwise{
-                load_store_instr = false.B
+        for (i <- 0 until numLdqEntries){
+            when(ldq(i).valid === true.B){
+                entry_cnt := entry_cnt + 1.U
             }
         }
 
-        when(load_store_instr === false.B){ //no load or store between operation and ROB head
+        for (i <- 0 until numStqEntries){
+          when(stq(i).valid === true.B){
+            entry_cnt := entry_cnt + 1.U
+          }
+        }
+
+        when(entry_cnt === 0.U){ //no load or store between operation and ROB head
             will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , true , true , true , false) // TLB , DC , LCAM
         }.otherwise{
-            when(false/*existing load / store already translated*/){
+            when(false.B/*address_is_virtual == false*/){
                 will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , true , true , true , false) // TLB , DC , LCAM
             }.otherwise{
                 will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , false , false , false , false)
