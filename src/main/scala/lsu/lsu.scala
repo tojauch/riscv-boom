@@ -561,25 +561,25 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
     //modifications made by tojauch:
     when(exe_req(w).bits.uop.br_mask === 0.U){ //only fire load if it is not speculative (br_mask = zero)
 
-        val entry_cnt = 0.U  //load or store instructions exist between operation and ROB head?
+        val entry_cnt = false.B  //load or store instructions exist between operation and ROB head?
 
         //check LAQ/SAQ if entry exists
         for (i <- 0 until numLdqEntries){
             when(ldq(i).valid === true.B){
-                entry_cnt = entry_cnt + 1.U
+                entry_cnt := true.B
             }
         }
 
         for (i <- 0 until numStqEntries){
           when(stq(i).valid === true.B){
-            entry_cnt = entry_cnt + 1
+            entry_cnt := true.B
           }
         }
 
-        when(entry_cnt === 0.U){ //no load or store between operation and ROB head
+        when(entry_cnt === false.B){ //no load or store between operation and ROB head
             will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , true , true , true , false) // TLB , DC , LCAM
         }.otherwise{
-            when(false.B/*address_is_virtual == false*/){
+            when(true.B/*address_is_virtual == false*/){
                 will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , true , true , true , false) // TLB , DC , LCAM
             }.otherwise{
                 will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , false , false , false , false)
