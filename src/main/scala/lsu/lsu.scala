@@ -556,7 +556,7 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
     when(exe_req(w).bits.uop.br_mask === 0.U){ //only fire load if it is not speculative (br_mask = zero)
 
       //load or store instructions exist between operation and ROB head?
-      val entry_cnt = Reg(UInt())
+      val entry_cnt = Reg(UInt(8.W))
       entry_cnt := 0.U
 
       //check LAQ/SAQ if entry exists
@@ -572,7 +572,9 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
         }
       }
 
-      when(entry_cnt > 0.U){ //no load or store between operation and ROB head
+      val fire = MUX(entry_cnt > 0.U, false.B, true.B)
+
+      when(fire === true.B){ //no load or store between operation and ROB head
           will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , true , true , true , false) // TLB , DC , LCAM
       }.otherwise{
       //when(true.B/*address_is_virtual == false*/){
