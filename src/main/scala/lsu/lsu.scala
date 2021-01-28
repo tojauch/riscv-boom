@@ -556,7 +556,7 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
     when(exe_req(w).bits.uop.br_mask === 0.U){ //only fire load if it is not speculative (br_mask = zero)
 
       //load or store instructions exist between operation and ROB head?
-      val entry_cnt = Reg(init=0.U(8.W))
+      val entry_cnt = RegInit(0.U(8.W))
       entry_cnt := 0.U
 
       //check LAQ/SAQ if entry exists
