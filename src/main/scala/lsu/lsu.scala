@@ -577,7 +577,7 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
       //val fire = Reg(init=false.B)
       //fire := true.B
 
-      when(entry_cnt === 0.U){ //no load or store between operation and ROB head
+      when(exe_req(w).bits.uop.br_mask/*entry_cnt === 0.U*/){ //no load or store between operation and ROB head
           will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , true , true , true , false) // TLB , DC , LCAM
       }.otherwise{
       //when(true.B/*address_is_virtual == false*/){
