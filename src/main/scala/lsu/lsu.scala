@@ -571,15 +571,15 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
         }
       }
 
-      //when(entry_cnt === 0.U){ //no load or store between operation and ROB head
-      will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , true , true , true , false) // TLB , DC , LCAM
-      //}.otherwise{
+      when(entry_cnt === 0.U){ //no load or store between operation and ROB head
+          will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , true , true , true , false) // TLB , DC , LCAM
+      }.otherwise{
       //when(true.B/*address_is_virtual == false*/){
-      //will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , true , true , true , false) // TLB , DC , LCAM
+          will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , true , true , true , false) // TLB , DC , LCAM
       //}.otherwise{
       //will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , false , false , false , false)
       //}
-      //}
+      }
     }.otherwise{
       will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , false , false , false , false)
     }
