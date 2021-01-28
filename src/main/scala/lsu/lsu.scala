@@ -41,12 +41,6 @@
 //    - ability to turn off things if VM is disabled
 //    - reconsider port count of the wakeup, retry stuff
 
-//############################################################################
-//############################################################################
-//#######################       Test for git        ##########################
-//############################################################################
-//############################################################################
-
 package boom.lsu
 
 import chisel3._
@@ -561,39 +555,40 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
     //modifications made by tojauch:
     when(exe_req(w).bits.uop.br_mask === 0.U){ //only fire load if it is not speculative (br_mask = zero)
 
-        //load or store instructions exist between operation and ROB head?
-        /*val entry_cnt = RegInit(0.U)
+      //load or store instructions exist between operation and ROB head?
+      /*val entry_cnt = RegInit(0.U)
 
-        //check LAQ/SAQ if entry exists
-        for (i <- 0 until numLdqEntries){
-            when(ldq(i).valid === true.B){
-                entry_cnt := entry_cnt + 1.U
-            }
-        }
-
-        for (i <- 0 until numStqEntries){
-          when(stq(i).valid === true.B){
-            entry_cnt := entry_cnt + 1.U
+      //check LAQ/SAQ if entry exists
+      for (i <- 0 until numLdqEntries){
+          when(ldq(i).valid === true.B){
+              entry_cnt := entry_cnt + 1.U
           }
-        }*/
+      }
 
-        //when(entry_cnt === 0.U){ //no load or store between operation and ROB head
-            will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , true , true , true , false) // TLB , DC , LCAM
-        //}.otherwise{
-            //when(true.B/*address_is_virtual == false*/){
-                //will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , true , true , true , false) // TLB , DC , LCAM
-            //}.otherwise{
-                //will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , false , false , false , false)
-            //}
-        //}
+      for (i <- 0 until numStqEntries){
+        when(stq(i).valid === true.B){
+          entry_cnt := entry_cnt + 1.U
+        }
+      }*/
+
+      //when(entry_cnt === 0.U){ //no load or store between operation and ROB head
+      will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , true , true , true , false) // TLB , DC , LCAM
+      //}.otherwise{
+      //when(true.B/*address_is_virtual == false*/){
+      //will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , true , true , true , false) // TLB , DC , LCAM
+      //}.otherwise{
+      //will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , false , false , false , false)
+      //}
+      //}
     }.otherwise{
-        will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , false , false , false , false)
+      will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , false , false , false , false)
     }
 
     // end of modifications
     //#######################################################################################################################################################################
 
 
+    //will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , true , true , true , false) // TLB , DC , LCAM
     will_fire_stad_incoming (w) := lsu_sched(can_fire_stad_incoming (w) , true , false, true , true)  // TLB ,    , LCAM , ROB
     will_fire_sta_incoming  (w) := lsu_sched(can_fire_sta_incoming  (w) , true , false, true , true)  // TLB ,    , LCAM , ROB
     will_fire_std_incoming  (w) := lsu_sched(can_fire_std_incoming  (w) , false, false, false, true)  //                 , ROB
