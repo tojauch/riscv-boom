@@ -572,7 +572,7 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
         }
       }
 
-      val fire = MUX(entry_cnt > 0.U, false.B, true.B)
+      val fire = Mux(entry_cnt > 0.U, false.B, true.B)
 
       when(fire === true.B){ //no load or store between operation and ROB head
           will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , true , true , true , false) // TLB , DC , LCAM
