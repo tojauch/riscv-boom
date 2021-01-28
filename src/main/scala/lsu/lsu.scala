@@ -562,7 +562,7 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
     when(exe_req(w).bits.uop.br_mask === 0.U){ //only fire load if it is not speculative (br_mask = zero)
 
         //load or store instructions exist between operation and ROB head?
-        val entry_cnt = RegInit(0.U)
+        /*val entry_cnt = RegInit(0.U)
 
         //check LAQ/SAQ if entry exists
         for (i <- 0 until numLdqEntries){
@@ -575,17 +575,17 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
           when(stq(i).valid === true.B){
             entry_cnt := entry_cnt + 1.U
           }
-        }
+        }*/
 
-        when(entry_cnt === 0.U){ //no load or store between operation and ROB head
+        //when(entry_cnt === 0.U){ //no load or store between operation and ROB head
             will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , true , true , true , false) // TLB , DC , LCAM
-        }.otherwise{
+        //}.otherwise{
             //when(true.B/*address_is_virtual == false*/){
-                will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , true , true , true , false) // TLB , DC , LCAM
+                //will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , true , true , true , false) // TLB , DC , LCAM
             //}.otherwise{
                 //will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , false , false , false , false)
             //}
-        }
+        //}
     }.otherwise{
         will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , false , false , false , false)
     }
