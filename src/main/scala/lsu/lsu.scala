@@ -557,7 +557,8 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
 
       //load or store instructions exist between operation and ROB head?
 
-      val entry_exists = false.B
+      val entry_exists = Wire(Bool())
+      entry_exists := false.B
 
       //check LAQ/SAQ if entry exists
       for (i <- 0 until numLdqEntries){
