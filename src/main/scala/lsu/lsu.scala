@@ -556,37 +556,33 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
     when(exe_req(w).bits.uop.br_mask === 0.U){ //only fire load if it is not speculative (br_mask = zero)
 
       //load or store instructions exist between operation and ROB head?
-      val entry_cnt = Reg(UInt(8.W))
-      entry_cnt := 0.U
 
-      val test = true.B
+      val entry_exists = false.B
 
       //check LAQ/SAQ if entry exists
       for (i <- 0 until numLdqEntries){
           when(ldq(i).valid === true.B){
-              entry_cnt := entry_cnt + 1.U
+              entry_exists := true.B
           }
       }
 
       for (i <- 0 until numStqEntries){
-        when(stq(i).valid === true.B){
-          entry_cnt := entry_cnt + 1.U
-        }
+          when(stq(i).valid === true.B){
+              entry_exists := true.B
+          }
       }
 
-      //val fire = Mux(entry_cnt > 0.U, false.B, true.B)
+      when(entry_exists){ //load or store between operation and ROB head
+          //will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , true , true , true , false) // TLB , DC , LCAM
 
-      //val fire = Reg(init=false.B)
-      //fire := true.B
+          when(entry_exists){ //no exception possible
+              will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , true , true , true , false) // TLB , DC , LCAM
+          }.otherwise{
+              will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , false , false , false , false)
+          }
 
-      when(test){ //no load or store between operation and ROB head
-          will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , true , true , true , false) // TLB , DC , LCAM
       }.otherwise{
-      //when(true.B/*address_is_virtual == false*/){
           will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , true , true , true , false) // TLB , DC , LCAM
-      //}.otherwise{
-      //will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , false , false , false , false)
-      //}
       }
     }.otherwise{
       will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , false , false , false , false)
