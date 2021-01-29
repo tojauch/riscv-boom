@@ -558,30 +558,24 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
       //load or store instructions exist between operation and ROB head?
 
       val entry_exists = Wire(Bool())
+      val
       entry_exists := false.B
 
       //check LAQ/SAQ if entry exists
       for (i <- 0 until numLdqEntries){
-          when(ldq(i).valid === true.B){
+          when(ldq(i).valid && ldq(i).bits.addr_is_virtual){
               entry_exists := true.B
           }
       }
 
       for (i <- 0 until numStqEntries){
-          when(stq(i).valid === true.B){
+          when(stq(i).valid && stq(i).bits.addr_is_virtual){
               entry_exists := true.B
           }
       }
 
       when(entry_exists){ //load or store between operation and ROB head
-          //will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , true , true , true , false) // TLB , DC , LCAM
-
-          when(entry_exists){ //no exception possible
-              will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , true , true , true , false) // TLB , DC , LCAM
-          }.otherwise{
-              will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , false , false , false , false)
-          }
-
+          will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , false , false , false , false)
       }.otherwise{
           will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , true , true , true , false) // TLB , DC , LCAM
       }
