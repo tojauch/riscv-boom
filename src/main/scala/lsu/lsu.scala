@@ -13,7 +13,7 @@
 // Queue, and the Store-Data queue (LAQ, SAQ, and SDQ).
 //
 // Stores are sent to memory at (well, after) commit, loads are executed
-// optimstically ASAP.  If a misspeculation was discovered, the pipeline is
+// optimistically ASAP.  If a misspeculation was discovered, the pipeline is
 // cleared. Loads put to sleep are retried.  If a LoadAddr and StoreAddr match,
 // the Load can receive its data by forwarding data out of the Store-Data
 // Queue.
@@ -176,6 +176,7 @@ class LDQEntry(implicit p: Parameters) extends BoomBundle()(p)
 
   val executed            = Bool() // load sent to memory, reset by NACKs
   val succeeded           = Bool()
+  val failure             = Bool() // added by tojauch for fix LSU-v3.0
   val order_fail          = Bool()
   val observed            = Bool()
 
@@ -515,7 +516,7 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
                                                                           ldq_wakeup_e.bits.st_dep_mask.asUInt === 0.U))))
 
   // Can we fire an incoming hellacache request
-  val can_fire_hella_incoming  = WireInit(widthMap(w => false.B)) // This is assigned to in the hellashim ocntroller
+  val can_fire_hella_incoming  = WireInit(widthMap(w => false.B)) // This is assigned to in the hellashim controller
 
   // Can we fire a hellacache request that the dcache nack'd
   val can_fire_hella_wakeup    = WireInit(widthMap(w => false.B)) // This is assigned to in the hellashim controller
@@ -551,8 +552,8 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
     //  - Prioritize releases, this speeds up cache line writebacks and refills
     //  - Store commits are lowest priority, since they don't "block" younger instructions unless stq fills up
 
-    //#######################################################################################################################################################################
-    //modifications made by tojauch:
+    //##########################################################################################################
+    //modifications made by tojauch (fix LSU-v1.0 and LSU-v2.0):
     when(exe_req(w).bits.uop.br_mask === 0.U){ //only fire load if it is not speculative (br_mask = zero)
 
       //load or store instructions exist between operation and ROB head?
@@ -576,14 +577,14 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
       when(entry_exists){ //load or store between operation and ROB head
           will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , false , false , false , false)
       }.otherwise{
-          will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , true , true , true , false) // TLB , DC , LCAM
-      }
+          will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , true , true , true , false)
+      }                                                                         // TLB , DC , LCAM
     }.otherwise{
       will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , false , false , false , false)
     }
 
     // end of modifications
-    //#######################################################################################################################################################################
+    //################################################################################
 
 
     //will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , true , true , true , false) // TLB , DC , LCAM
@@ -769,7 +770,7 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
 
 
   //------------------------------
-  // Issue Someting to Memory
+  // Issue something to Memory
   //
   // A memory op can come from many different places
   // The address either was freshly translated, or we are
@@ -866,6 +867,23 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
       dmem_req(w).bits.is_hella       := true.B
     }
 
+    //##################################################################################################################
+    //modifications made by tojauch for fix LSU-v3.0:
+
+    val ldq_idx = Mux(will_fire_load_incoming(w), ldq_incoming_idx(w), ldq_retry_idx)
+
+    when (will_fire_load_incoming(w) || will_fire_load_retry(w) || will_fire_load_wakeup(w))
+    {
+      ldq(ldq_idx).bits.failure := ((will_fire_load_incoming(w) && (ma_ld(w) || pf_ld(w))) || (will_fire_load_retry(w) && pf_ld(w)))
+    }
+    .elsewhen (!will_fire_load_incoming(w) && (io.core.exe(w).iresp.valid && io.core.exe(w).iresp.bits.uop.ctrl.is_load
+      && io.core.exe(w).iresp.bits.uop.br_mask =/= UInt(0.W) ))
+    {
+      ldq(ldq_idx).bits.failure := (ma_ld(w) || pf_ld(w))
+    }
+
+    //##################################################################################################################
+
     //-------------------------------------------------------------
     // Write Addr into the LAQ/SAQ
     when (will_fire_load_incoming(w) || will_fire_load_retry(w))
@@ -876,6 +894,7 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
       ldq(ldq_idx).bits.uop.pdst            := exe_tlb_uop(w).pdst
       ldq(ldq_idx).bits.addr_is_virtual     := exe_tlb_miss(w)
       ldq(ldq_idx).bits.addr_is_uncacheable := exe_tlb_uncacheable(w) && !exe_tlb_miss(w)
+
 
       assert(!(will_fire_load_incoming(w) && ldq_incoming_e(w).bits.addr.valid),
         "[lsu] Incoming load is overwriting a valid address")
