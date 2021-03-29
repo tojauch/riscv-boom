@@ -878,11 +878,21 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
     when (will_fire_load_incoming(w) || will_fire_load_retry(w) || will_fire_load_wakeup(w))
     {
       ldq(ldq_idx).bits.failure := ((will_fire_load_incoming(w) && (ma_ld(w) || pf_ld(w))) || (will_fire_load_retry(w) && pf_ld(w)))
+      
+      when (ldq(ldq_idx).bits.failure)
+      {
+        failed_loads(ldq_idx) := true.B
+      }
     }
     .elsewhen (!will_fire_load_incoming(w) && (io.core.exe(w).iresp.valid && io.core.exe(w).iresp.bits.uop.ctrl.is_load
       && io.core.exe(w).iresp.bits.uop.br_mask =/= 0.U ))
     {
       ldq(ldq_idx).bits.failure := (ma_ld(w) || pf_ld(w))
+
+      when (ldq(ldq_idx).bits.failure)
+      {
+        failed_loads(ldq_idx) := true.B
+      }
     }
 
     //##################################################################################################################
