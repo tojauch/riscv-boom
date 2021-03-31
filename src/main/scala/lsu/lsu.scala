@@ -312,6 +312,7 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
       ldq(ld_enq_idx).bits.executed        := false.B
       ldq(ld_enq_idx).bits.succeeded       := false.B
       ldq(ld_enq_idx).bits.order_fail      := false.B
+      ldq(ld_enq_idx).bits.failure         := false.B //modification made by tojauch for fix LSU-v3.0
       ldq(ld_enq_idx).bits.observed        := false.B
       ldq(ld_enq_idx).bits.forward_std_val := false.B
 
@@ -1534,6 +1535,7 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
       ldq(idx).bits.executed         := false.B
       ldq(idx).bits.succeeded        := false.B
       ldq(idx).bits.order_fail       := false.B
+      ldq(idx).bits.failure          := false.B //modification made by tojauch for fix LSU-v3.0
       ldq(idx).bits.forward_std_val  := false.B
 
     }
