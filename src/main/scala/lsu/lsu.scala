@@ -441,7 +441,7 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
 
   // Can we fire a incoming load
   val can_fire_load_incoming = widthMap(w => exe_req(w).valid && exe_req(w).bits.uop.ctrl.is_load
-                                                              && !ldq_retry_e.bits.failure) // added by tojauch for fix LSU-v3.0
+                                                              && !ldq(w).bits.failure) // added by tojauch for fix LSU-v3.0
 
   // Can we fire an incoming store addrgen + store datagen
   val can_fire_stad_incoming = widthMap(w => exe_req(w).valid && exe_req(w).bits.uop.ctrl.is_sta
@@ -513,7 +513,7 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
                               !p2_block_load_mask(ldq_wakeup_idx)                      &&
                               !store_needs_order                                       &&
                               !block_load_wakeup                                       && 
-                              !ldq_retry_e.bits.failure                                && // added by tojauch for fix LSU-v3.0
+                              !ldq_wakeup_e.bits.failure                                && // added by tojauch for fix LSU-v3.0
                               (w == memWidth-1).B                                      &&
                               (!ldq_wakeup_e.bits.addr_is_uncacheable || (io.core.commit_load_at_rob_head &&
                                                                           ldq_head === ldq_wakeup_idx &&
