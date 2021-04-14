@@ -41,6 +41,8 @@
 //    - ability to turn off things if VM is disabled
 //    - reconsider port count of the wakeup, retry stuff
 
+//tojauch: 20211404 (LSU-v3.0)
+
 package boom.lsu
 
 import chisel3._
@@ -876,19 +878,12 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
     //##################################################################################################################
     //modifications made by tojauch for fix LSU-v3.0:
 
-    val ldq_idx = Mux(will_fire_load_incoming(w), ldq_incoming_idx(w), ldq_retry_idx)
+    val ldq_idx = Mux(will_fire_load_incoming(w), ldq_incoming_idx(w), ldq_retry_idx) //ldq_wakeup_idx?
 
     when (will_fire_load_incoming(w) || will_fire_load_retry(w) || will_fire_load_wakeup(w))
     {
       ldq(ldq_idx).bits.failure := ((will_fire_load_incoming(w) && (ma_ld(w) || pf_ld(w))) || (will_fire_load_retry(w) && pf_ld(w)))
       failed_loads(ldq_idx) := ((will_fire_load_incoming(w) && (ma_ld(w) || pf_ld(w))) || (will_fire_load_retry(w) && pf_ld(w)))
-
-    }
-    .elsewhen (!will_fire_load_incoming(w) && (io.core.exe(w).iresp.valid && io.core.exe(w).iresp.bits.uop.ctrl.is_load
-      && io.core.exe(w).iresp.bits.uop.br_mask =/= 0.U ))
-    {
-      ldq(ldq_idx).bits.failure := (ma_ld(w) || pf_ld(w))
-      failed_loads(ldq_idx) := (ma_ld(w) || pf_ld(w))
     }
 
     //##################################################################################################################
