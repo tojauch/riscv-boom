@@ -41,7 +41,7 @@
 //    - ability to turn off things if VM is disabled
 //    - reconsider port count of the wakeup, retry stuff
 
-//tojauch: 20210415 (LSU-v3.0)
+//tojauch: 20210422 (LSU-v3.0)
 
 package boom.lsu
 
@@ -442,8 +442,8 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
   // Determine what can fire
 
   // Can we fire a incoming load
-  val can_fire_load_incoming = widthMap(w => exe_req(w).valid && exe_req(w).bits.uop.ctrl.is_load
-                                                              && !ldq(w).bits.failure) // added by tojauch for fix LSU-v3.0
+  val can_fire_load_incoming = widthMap(w => exe_req(w).valid && exe_req(w).bits.uop.ctrl.is_load)
+                                                              //&& !ldq(w).bits.failure) // added by tojauch for fix LSU-v3.0
 
   // Can we fire an incoming store addrgen + store datagen
   val can_fire_stad_incoming = widthMap(w => exe_req(w).valid && exe_req(w).bits.uop.ctrl.is_sta
