@@ -472,7 +472,7 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
                                 RegNext(dtlb.io.miss_rdy)                     &&
                                 !store_needs_order                            &&
                                 (w == memWidth-1).B                           && // TODO: Is this best scheduling?
-                                !ldq_retry_e.bits.order_fail))		      &&
+                                !ldq_retry_e.bits.order_fail		      &&
                                 !ldq_retry_e.bits.failure))  
 
   // Can we retry a store addrgen that missed in the TLB
