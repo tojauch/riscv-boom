@@ -176,6 +176,7 @@ class LDQEntry(implicit p: Parameters) extends BoomBundle()(p)
 
   val executed            = Bool() // load sent to memory, reset by NACKs
   val succeeded           = Bool()
+  val failure		  = Bool()
   val order_fail          = Bool()
   val observed            = Bool()
 
@@ -247,7 +248,7 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
 
 
   val dtlb = Module(new NBDTLB(
-    instruction = false, lgMaxSize = log2Ceil(coreDataBytes), rocket.TLBConfig(dcacheParams.nTLBEntries)))
+    instruction = false, lgMaxSize = log2Ceil(coreDataBytes), rocket.TLBConfig(dcacheParams.nTLBSets, dcacheParams.nTLBWays)))
 
   io.ptw <> dtlb.io.ptw
   io.core.perf.tlbMiss := io.ptw.req.fire()
@@ -310,6 +311,7 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
       ldq(ld_enq_idx).bits.addr.valid      := false.B
       ldq(ld_enq_idx).bits.executed        := false.B
       ldq(ld_enq_idx).bits.succeeded       := false.B
+      ldq(ld_enq_idx).bits.failure         := false.B
       ldq(ld_enq_idx).bits.order_fail      := false.B
       ldq(ld_enq_idx).bits.observed        := false.B
       ldq(ld_enq_idx).bits.forward_std_val := false.B
@@ -470,7 +472,8 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
                                 RegNext(dtlb.io.miss_rdy)                     &&
                                 !store_needs_order                            &&
                                 (w == memWidth-1).B                           && // TODO: Is this best scheduling?
-                                !ldq_retry_e.bits.order_fail))
+                                !ldq_retry_e.bits.order_fail		      &&
+                                !ldq_retry_e.bits.failure))  
 
   // Can we retry a store addrgen that missed in the TLB
   // - Weird edge case when sta_retry and std_incoming for same entry in same cycle. Delay this
@@ -509,6 +512,7 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
                               !p2_block_load_mask(ldq_wakeup_idx)                      &&
                               !store_needs_order                                       &&
                               !block_load_wakeup                                       &&
+                              !ldq_wakeup_e.bits.failure                               &&
                               (w == memWidth-1).B                                      &&
                               (!ldq_wakeup_e.bits.addr_is_uncacheable || (io.core.commit_load_at_rob_head &&
                                                                           ldq_head === ldq_wakeup_idx &&
@@ -753,6 +757,8 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
 
   val s0_executing_loads = WireInit(VecInit((0 until numLdqEntries).map(x=>false.B)))
 
+  val failed_loads = WireInit(VecInit((0 until numLdqEntries).map(x=>false.B))) // Loads which we will report as failures (throws a mini-exception)
+
 
   for (w <- 0 until memWidth) {
     dmem_req(w).valid := false.B
@@ -764,14 +770,14 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
     io.dmem.s1_kill(w) := false.B
 
     when (will_fire_load_incoming(w)) {
-      dmem_req(w).valid      := !exe_tlb_miss(w) && !exe_tlb_uncacheable(w)
+      dmem_req(w).valid      := !exe_tlb_miss(w) && !exe_tlb_uncacheable(w) && !((will_fire_load_incoming(w) && (ma_ld(w) || pf_ld(w))) || (will_fire_load_retry(w) && pf_ld(w)))
       dmem_req(w).bits.addr  := exe_tlb_paddr(w)
       dmem_req(w).bits.uop   := exe_tlb_uop(w)
 
       s0_executing_loads(ldq_incoming_idx(w)) := dmem_req_fire(w)
       assert(!ldq_incoming_e(w).bits.executed)
     } .elsewhen (will_fire_load_retry(w)) {
-      dmem_req(w).valid      := !exe_tlb_miss(w) && !exe_tlb_uncacheable(w)
+      dmem_req(w).valid      := !exe_tlb_miss(w) && !exe_tlb_uncacheable(w) && !((will_fire_load_incoming(w) && (ma_ld(w) || pf_ld(w))) || (will_fire_load_retry(w) && pf_ld(w)))
       dmem_req(w).bits.addr  := exe_tlb_paddr(w)
       dmem_req(w).bits.uop   := exe_tlb_uop(w)
 
@@ -828,6 +834,14 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
       dmem_req(w).bits.uop.mem_size   := hella_req.size
       dmem_req(w).bits.uop.mem_signed := hella_req.signed
       dmem_req(w).bits.is_hella       := true.B
+    }
+
+    val ldq_idx = Mux(will_fire_load_incoming(w), ldq_incoming_idx(w), ldq_retry_idx)
+
+    when (will_fire_load_incoming(w) || will_fire_load_retry(w) || will_fire_load_wakeup(w))
+    {
+      ldq(ldq_idx).bits.failure := ((will_fire_load_incoming(w) && (ma_ld(w) || pf_ld(w))) || (will_fire_load_retry(w) && pf_ld(w)))
+      failed_loads(ldq_idx) := ((will_fire_load_incoming(w) && (ma_ld(w) || pf_ld(w))) || (will_fire_load_retry(w) && pf_ld(w)))
     }
 
     //-------------------------------------------------------------
@@ -1463,6 +1477,7 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
       ldq(idx).bits.addr.valid       := false.B
       ldq(idx).bits.executed         := false.B
       ldq(idx).bits.succeeded        := false.B
+      ldq(idx).bits.failure          := false.B
       ldq(idx).bits.order_fail       := false.B
       ldq(idx).bits.forward_std_val  := false.B
 
