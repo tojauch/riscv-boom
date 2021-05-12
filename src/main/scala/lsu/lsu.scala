@@ -41,7 +41,7 @@
 //    - ability to turn off things if VM is disabled
 //    - reconsider port count of the wakeup, retry stuff
 
-//tojauch: 20210422 (LSU-v3.0)
+//tojauch: 20210512 (LSU-v3.0)
 
 package boom.lsu
 
@@ -878,9 +878,9 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
     //##################################################################################################################
     //modifications made by tojauch for fix LSU-v3.0:
 
-    val ldq_idx = Mux(will_fire_load_incoming(w), ldq_incoming_idx(w), ldq_retry_idx) //ldq_wakeup_idx?
+    val ldq_idx = Mux(will_fire_load_incoming(w), ldq_incoming_idx(w), ldq_retry_idx)
 
-    when (will_fire_load_incoming(w) || will_fire_load_retry(w) || will_fire_load_wakeup(w))
+    when (will_fire_load_incoming(w) || will_fire_load_retry(w))
     {
       ldq(ldq_idx).bits.failure := ((will_fire_load_incoming(w) && (ma_ld(w) || pf_ld(w))) || (will_fire_load_retry(w) && pf_ld(w)))
       failed_loads(ldq_idx) := ((will_fire_load_incoming(w) && (ma_ld(w) || pf_ld(w))) || (will_fire_load_retry(w) && pf_ld(w)))
