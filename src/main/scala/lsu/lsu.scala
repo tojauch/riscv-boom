@@ -448,9 +448,9 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
   //##########################################################################################################
   //modifications made by tojauch (fix LSU-v4.0):
 
-  val can_fire_load_incoming = widthMap(w => exe_req(w).valid && exe_req(w).bits.uop.ctrl.is_load && false.B)
+  val can_fire_load_incoming = widthMap(w => exe_req(w).valid && exe_req(w).bits.uop.ctrl.is_load && (exe_req(w).bits.uop.br_mask === 0.U))
 
-  //load or store instructions exist between operation and ROB head?
+  /*//load or store instructions exist between operation and ROB head?
 
   val entry_exists = Wire(Bool())
   entry_exists := false.B
@@ -470,7 +470,7 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
 
   when(!entry_exists){ //no load or store between operation and ROB head?
     val can_fire_load_incoming = widthMap(w => exe_req(w).valid && exe_req(w).bits.uop.ctrl.is_load && (exe_req(w).bits.uop.br_mask === 0.U))
-  } //only fire load if it is not speculative (br_mask = zero)
+  } //only fire load if it is not speculative (br_mask = zero)*/
 
   // end of modifications
   //################################################################################
