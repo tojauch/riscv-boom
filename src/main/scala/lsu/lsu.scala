@@ -581,12 +581,12 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
       }
 
       when(entry_exists){ //load or store between operation and ROB head
-          will_fire_load_incoming (w) := false.B)
+          will_fire_load_incoming (w) := false.B
       }.otherwise{
           will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , true , true , true , false)
       }                                                                         // TLB , DC , LCAM
     }.otherwise{
-      will_fire_load_incoming (w) := false.B)
+      will_fire_load_incoming (w) := false.B
     }
 
     // end of modifications
