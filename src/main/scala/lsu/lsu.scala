@@ -41,7 +41,7 @@
 //    - ability to turn off things if VM is disabled
 //    - reconsider port count of the wakeup, retry stuff
 
-//tojauch: 20210512 (LSU-v3.0)
+//tojauch: 20210521 (LSU-v4.0)
 
 package boom.lsu
 
@@ -559,7 +559,7 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
     //  - Store commits are lowest priority, since they don't "block" younger instructions unless stq fills up
 
     //##########################################################################################################
-    //modifications made by tojauch (fix LSU-v1.0 and LSU-v2.0):
+    //modifications made by tojauch (fix LSU-v1.0, LSU-v2.0 and LSU-v4.0):
     when(exe_req(w).bits.uop.br_mask === 0.U){ //only fire load if it is not speculative (br_mask = zero)
 
       //load or store instructions exist between operation and ROB head?
@@ -581,12 +581,12 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
       }
 
       when(entry_exists){ //load or store between operation and ROB head
-          will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , false , false , false , false)
+          will_fire_load_incoming (w) := false.B)
       }.otherwise{
           will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , true , true , true , false)
       }                                                                         // TLB , DC , LCAM
     }.otherwise{
-      will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , false , false , false , false)
+      will_fire_load_incoming (w) := false.B)
     }
 
     // end of modifications
