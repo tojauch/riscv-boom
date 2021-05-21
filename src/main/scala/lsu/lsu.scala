@@ -447,34 +447,30 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
 
   //##########################################################################################################
   //modifications made by tojauch (fix LSU-v4.0):
-  when(exe_req(w).bits.uop.br_mask === 0.U){ //only fire load if it is not speculative (br_mask = zero)
 
-    //load or store instructions exist between operation and ROB head?
+  //load or store instructions exist between operation and ROB head?
 
-    val entry_exists = Wire(Bool())
-    entry_exists := false.B
+  val entry_exists = Wire(Bool())
+  entry_exists := false.B
 
-    //check LAQ/SAQ if entry exists
-    for (i <- 0 until numLdqEntries){
-        when(ldq(i).valid && ldq(i).bits.addr_is_virtual){
-            entry_exists := true.B
-        }
+  //check LAQ/SAQ if entry exists
+  for (i <- 0 until numLdqEntries){
+    when(ldq(i).valid && ldq(i).bits.addr_is_virtual){
+      entry_exists := true.B
     }
-
-    for (i <- 0 until numStqEntries){
-        when(stq(i).valid && stq(i).bits.addr_is_virtual){
-            entry_exists := true.B
-        }
-    }
-
-    when(entry_exists){ //load or store between operation and ROB head
-      val can_fire_load_incoming = widthMap(w => false.B)
-    }.otherwise{
-      val can_fire_load_incoming = widthMap(w => exe_req(w).valid && exe_req(w).bits.uop.ctrl.is_load)
-    }
-  }.otherwise{
-    val can_fire_load_incoming = widthMap(w => false.B)
   }
+
+  for (i <- 0 until numStqEntries){
+    when(stq(i).valid && stq(i).bits.addr_is_virtual){
+      entry_exists := true.B
+    }
+  }
+
+  when(entry_exists){ //load or store between operation and ROB head?
+    val can_fire_load_incoming = widthMap(w => false.B)
+  }.otherwise{
+    val can_fire_load_incoming = widthMap(w => exe_req(w).valid && exe_req(w).bits.uop.ctrl.is_load && (exe_req(w).bits.uop.br_mask === 0.U))
+  } //only fire load if it is not speculative (br_mask = zero)
 
   // end of modifications
   //################################################################################
