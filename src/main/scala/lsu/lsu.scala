@@ -468,12 +468,12 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
     }
 
     when(entry_exists){ //load or store between operation and ROB head
-      can_fire_load_incoming = widthMap(w => false.B)
+      val can_fire_load_incoming = widthMap(w => false.B)
     }.otherwise{
-        can_fire_load_incoming = widthMap(w => exe_req(w).valid && exe_req(w).bits.uop.ctrl.is_load)
+      val can_fire_load_incoming = widthMap(w => exe_req(w).valid && exe_req(w).bits.uop.ctrl.is_load)
     }
   }.otherwise{
-    can_fire_load_incoming = widthMap(w => false.B)
+    val can_fire_load_incoming = widthMap(w => false.B)
   }
 
   // end of modifications
