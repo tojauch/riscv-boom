@@ -41,7 +41,7 @@
 //    - ability to turn off things if VM is disabled
 //    - reconsider port count of the wakeup, retry stuff
 
-//tojauch: 20210521 (LSU-v4.0)
+//tojauch: 20210526 (LSU-v4.0)
 
 package boom.lsu
 
@@ -373,6 +373,7 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
   // These are the "can_fire"/"will_fire" signals
 
   val will_fire_load_incoming  = Wire(Vec(memWidth, Bool()))
+  val will_queue_load_incoming  = Wire(Vec(memWidth, Bool())) //added by tojauch for fix LSU-v4.0
   val will_fire_stad_incoming  = Wire(Vec(memWidth, Bool()))
   val will_fire_sta_incoming   = Wire(Vec(memWidth, Bool()))
   val will_fire_std_incoming   = Wire(Vec(memWidth, Bool()))
@@ -442,38 +443,8 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
   // Determine what can fire
 
   // Can we fire a incoming load
-  //val can_fire_load_incoming = widthMap(w => exe_req(w).valid && exe_req(w).bits.uop.ctrl.is_load)
-                                                              //&& !ldq(w).bits.failure) // added by tojauch for fix LSU-v3.0
-
-  //##########################################################################################################
-  //modifications made by tojauch (fix LSU-v4.0):
-
-  val can_fire_load_incoming = widthMap(w => exe_req(w).valid && exe_req(w).bits.uop.ctrl.is_load)// && (exe_req(w).bits.uop.br_mask === 0.U))
-
-  //load or store instructions exist between operation and ROB head?
-
-  /*val entry_exists = Wire(Bool())
-  entry_exists := false.B
-
-  //check LAQ/SAQ if entry exists
-  for (i <- 0 until numLdqEntries){
-    when(ldq(i).valid && ldq(i).bits.addr_is_virtual){
-      entry_exists := true.B
-    }
-  }
-
-  for (i <- 0 until numStqEntries){
-    when(stq(i).valid && stq(i).bits.addr_is_virtual){
-      entry_exists := true.B
-    }
-  }
-
-  when(!entry_exists){ //no load or store between operation and ROB head?
-    val can_fire_load_incoming = widthMap(w => exe_req(w).valid && exe_req(w).bits.uop.ctrl.is_load && (exe_req(w).bits.uop.br_mask === 0.U))
-  } //only fire load if it is not speculative (br_mask = zero)*/
-
-  // end of modifications
-  //################################################################################
+  val can_fire_load_incoming = widthMap(w => exe_req(w).valid && exe_req(w).bits.uop.ctrl.is_load)
+  
 
   // Can we fire an incoming store addrgen + store datagen
   val can_fire_stad_incoming = widthMap(w => exe_req(w).valid && exe_req(w).bits.uop.ctrl.is_sta
@@ -590,7 +561,7 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
 
     //##########################################################################################################
     //modifications made by tojauch (fix LSU-v1.0, LSU-v2.0 and LSU-v4.0):
-    /*when(exe_req(w).bits.uop.br_mask === 0.U){ //only fire load if it is not speculative (br_mask = zero)
+    when(exe_req(w).bits.uop.br_mask === 0.U){ //only fire load if it is not speculative (br_mask = zero)
 
       //load or store instructions exist between operation and ROB head?
 
@@ -611,19 +582,21 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
       }
 
       when(entry_exists){ //load or store between operation and ROB head
-          will_fire_load_incoming (w) := lsu_sched(false.B , true , true , true , false)
+        will_fire_load_incoming (w) := lsu_sched(false.B , true , true , true , false)
+        will_queue_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , true , true , true , false) // TLB , DC , LCAM
       }.otherwise{
-          will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , true , true , true , false)
-      }                                                                         // TLB , DC , LCAM
+          will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , true , true , true , false) // TLB , DC , LCAM
+          will_queue_load_incoming (w) := lsu_sched(false.B , true , true , true , false) // TLB , DC , LCAM
+      }                                                                         
     }.otherwise{
       will_fire_load_incoming (w) := lsu_sched(false.B , true , true , true , false)
-    }*/
+      will_queue_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , true , true , true , false) // TLB , DC , LCAM
+    }
 
     // end of modifications
     //################################################################################
 
-
-    will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , true , true , true , false) // TLB , DC , LCAM
+    
     will_fire_stad_incoming (w) := lsu_sched(can_fire_stad_incoming (w) , true , false, true , true)  // TLB ,    , LCAM , ROB
     will_fire_sta_incoming  (w) := lsu_sched(can_fire_sta_incoming  (w) , true , false, true , true)  // TLB ,    , LCAM , ROB
     will_fire_std_incoming  (w) := lsu_sched(can_fire_std_incoming  (w) , false, false, false, true)  //                 , ROB
@@ -919,10 +892,11 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
     //##################################################################################################################
 
     //-------------------------------------------------------------
+
     // Write Addr into the LAQ/SAQ
-    when (will_fire_load_incoming(w) || will_fire_load_retry(w))
+    when (will_queue_load_incoming(w) || will_fire_load_incoming(w) || will_fire_load_retry(w)) //changes made by tojauch for LSU-v4.0
     {
-      val ldq_idx = Mux(will_fire_load_incoming(w), ldq_incoming_idx(w), ldq_retry_idx)
+      val ldq_idx = Mux((will_queue_load_incoming(w) || will_fire_load_incoming(w)), ldq_incoming_idx(w), ldq_retry_idx)
       ldq(ldq_idx).bits.addr.valid          := true.B
       ldq(ldq_idx).bits.addr.bits           := Mux(exe_tlb_miss(w), exe_tlb_vaddr(w), exe_tlb_paddr(w))
       ldq(ldq_idx).bits.uop.pdst            := exe_tlb_uop(w).pdst
@@ -930,7 +904,7 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
       ldq(ldq_idx).bits.addr_is_uncacheable := exe_tlb_uncacheable(w) && !exe_tlb_miss(w)
 
 
-      assert(!(will_fire_load_incoming(w) && ldq_incoming_e(w).bits.addr.valid),
+      assert(!((will_queue_load_incoming(w) || will_fire_load_incoming(w) && ldq_incoming_e(w).bits.addr.valid),
         "[lsu] Incoming load is overwriting a valid address")
     }
 
