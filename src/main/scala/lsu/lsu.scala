@@ -564,8 +564,8 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
     
     val test_signal_br_mask_is_zero = Wire(Bool())
     val test_signal_otherwise = Wire(Bool())
-    test_signal_br_mask_is_zero = false.B
-    test_signal_otherwise = false.B
+    test_signal_br_mask_is_zero := false.B
+    test_signal_otherwise := false.B
 
       when(exe_req(w).bits.uop.br_mask === 0.U){ //only fire load if it is not speculative (br_mask = zero)
 
