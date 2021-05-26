@@ -904,7 +904,7 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
       ldq(ldq_idx).bits.addr_is_uncacheable := exe_tlb_uncacheable(w) && !exe_tlb_miss(w)
 
 
-      assert(!((will_queue_load_incoming(w) || will_fire_load_incoming(w) && ldq_incoming_e(w).bits.addr.valid),
+      assert(!((will_queue_load_incoming(w) || will_fire_load_incoming(w)) && ldq_incoming_e(w).bits.addr.valid),
         "[lsu] Incoming load is overwriting a valid address")
     }
 
