@@ -41,7 +41,7 @@
 //    - ability to turn off things if VM is disabled
 //    - reconsider port count of the wakeup, retry stuff
 
-//tojauch: 20210526 (LSU-v4.0)
+//tojauch: 20210531 (LSU-v4.0)
 
 package boom.lsu
 
@@ -562,10 +562,8 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
     //##########################################################################################################
     //modifications made by tojauch (fix LSU-v1.0, LSU-v2.0 and LSU-v4.0):
     
-    val test_signal_br_mask_is_zero = Wire(Bool())
-    val test_signal_otherwise = Wire(Bool())
-    test_signal_br_mask_is_zero := false.B
-    test_signal_otherwise := false.B
+    val test_signal_br_mask_is_zero = RegInit(Bool(false.B))
+    val test_signal_otherwise = RegInit(Bool(false.B))
 
       when(exe_req(w).bits.uop.br_mask === 0.U){ //only fire load if it is not speculative (br_mask = zero)
 
@@ -594,7 +592,7 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
           test_signal_br_mask_is_zero := true.B
           test_signal_otherwise := false.B
           will_fire_load_incoming(w) := lsu_sched(can_fire_load_incoming(w) , true , true , true , false) // TLB , DC , LCAM
-          will_fire_ldq_incoming(w) := lsu_sched(false.B , true , true , true , false) // TLB , DC , LCAM
+          will_fire_ldq_incoming(w) := lsu_sched(false.B , false , false , false , false) // TLB , DC , LCAM
       //}
     }.otherwise{
       test_signal_otherwise := true.B
