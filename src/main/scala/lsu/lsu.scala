@@ -373,7 +373,7 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
   // These are the "can_fire"/"will_fire" signals
 
   val will_fire_load_incoming  = Wire(Vec(memWidth, Bool()))
-  val will_fire_ldq_incoming  = Wire(Vec(memWidth, Bool())) //added by tojauch for fix LSU-v4.0
+  val will_fire_ldq_incoming   = Wire(Vec(memWidth, Bool())) //added by tojauch for fix LSU-v4.0
   val will_fire_stad_incoming  = Wire(Vec(memWidth, Bool()))
   val will_fire_sta_incoming   = Wire(Vec(memWidth, Bool()))
   val will_fire_std_incoming   = Wire(Vec(memWidth, Bool()))
@@ -442,8 +442,11 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
   // -----------------------
   // Determine what can fire
 
-  // Can we fire a incoming load
-  val can_fire_load_incoming = widthMap(w => exe_req(w).valid && exe_req(w).bits.uop.ctrl.is_load)
+  // Can we fire an incoming load
+  val can_fire_load_incoming = widthMap(w => exe_req(w).valid && exe_req(w).bits.uop.ctrl.is_load && (exe_req(w).bits.uop.br_mask === 0.U))
+
+  // Can we queue an incoming load
+  val can_fire_ldq_incoming = widthMap(w => exe_req(w).valid && exe_req(w).bits.uop.ctrl.is_load)
   
 
   // Can we fire an incoming store addrgen + store datagen
@@ -562,14 +565,14 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
     //##########################################################################################################
     //modifications made by tojauch (fix LSU-v1.0, LSU-v2.0 and LSU-v4.0):
     
-    val test_signal_br_mask_is_zero = RegInit(false.B)
+    /*val test_signal_br_mask_is_zero = RegInit(false.B)
     val test_signal_otherwise = RegInit(false.B)
 
       when(exe_req(w).bits.uop.br_mask === 0.U){ //only fire load if it is not speculative (br_mask = zero)
 
       //load or store instructions exist between operation and ROB head?
 
-      /*val entry_exists = Wire(Bool())
+      val entry_exists = Wire(Bool())
       entry_exists := false.B
 
       //check LAQ/SAQ if entry exists
@@ -583,28 +586,29 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
           when(stq(i).valid && stq(i).bits.addr_is_virtual){
               entry_exists := true.B
           }
-      }*/
+      }
 
-      /*when(entry_exists){ //load or store between operation and ROB head
+      when(entry_exists){ //load or store between operation and ROB head
         will_fire_load_incoming (w) := lsu_sched(false.B , true , true , true , false)
         will_fire_ldq_incoming (w) := lsu_sched(can_fire_load_incoming (w) , true , true , true , false) // TLB , DC , LCAM
-      }.otherwise{*/
+      }.otherwise{
           test_signal_br_mask_is_zero := true.B
           test_signal_otherwise := false.B
           will_fire_load_incoming(w) := lsu_sched(can_fire_load_incoming(w) , true , true , true , false) // TLB , DC , LCAM
           will_fire_ldq_incoming(w) := lsu_sched(false.B , false , false , false , false) // TLB , DC , LCAM
-      //}
+      }
     }.otherwise{
       test_signal_otherwise := true.B
       test_signal_br_mask_is_zero := false.B
       will_fire_load_incoming(w) := lsu_sched(false.B , false , false , false , false)
       will_fire_ldq_incoming(w) := lsu_sched(can_fire_load_incoming(w) , true , true , true , false) // TLB , DC , LCAM
-    }
+    }*/
 
     // end of modifications
     //################################################################################
 
-    
+    will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , true , true , true , false) // TLB , DC , LCAM
+    will_fire_ldq_incoming  (w) := lsu_sched(can_fire_ldq_incoming  (w) , true , true , true , false) // TLB , DC , LCAM
     will_fire_stad_incoming (w) := lsu_sched(can_fire_stad_incoming (w) , true , false, true , true)  // TLB ,    , LCAM , ROB
     will_fire_sta_incoming  (w) := lsu_sched(can_fire_sta_incoming  (w) , true , false, true , true)  // TLB ,    , LCAM , ROB
     will_fire_std_incoming  (w) := lsu_sched(can_fire_std_incoming  (w) , false, false, false, true)  //                 , ROB
