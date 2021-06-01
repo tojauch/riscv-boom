@@ -582,8 +582,8 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
 
     when (will_fire_load_wakeup(w)) {
       block_load_mask(ldq_wakeup_idx)           := true.B
-    } .elsewhen (will_fire_ldq_incoming(w)) { //added by tojauch for fix LSU-v4.0
-      block_load_mask(exe_req(w).bits.uop.ldq_idx) := true.B
+    //} .elsewhen (will_fire_ldq_incoming(w)) { //added by tojauch for fix LSU-v4.0
+      //block_load_mask(exe_req(w).bits.uop.ldq_idx) := true.B
     } .elsewhen (will_fire_load_incoming(w)) {
       block_load_mask(exe_req(w).bits.uop.ldq_idx) := true.B
     } .elsewhen (will_fire_load_retry(w)) {
