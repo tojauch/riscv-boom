@@ -870,10 +870,10 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
     {
       val ldq_idx = Mux((will_fire_ldq_incoming(w) || will_fire_load_incoming(w)), ldq_incoming_idx(w), ldq_retry_idx)
       ldq(ldq_idx).bits.addr.valid          := true.B
-      ldq(ldq_idx).bits.addr.bits           := Mux((exe_tlb_miss(w) || will_fire_ldq_incoming), exe_tlb_vaddr(w), exe_tlb_paddr(w)) //changes made by tojauch for LSU-v4.0
+      ldq(ldq_idx).bits.addr.bits           := Mux((exe_tlb_miss(w) || will_fire_ldq_incoming(w)), exe_tlb_vaddr(w), exe_tlb_paddr(w)) //changes made by tojauch for LSU-v4.0
       ldq(ldq_idx).bits.uop.pdst            := exe_tlb_uop(w).pdst
       ldq(ldq_idx).bits.addr_is_virtual     := Mux(will_fire_ldq_incoming(w), true.B, exe_tlb_miss(w)) //changes made by tojauch for LSU-v4.0
-      ldq(ldq_idx).bits.addr_is_uncacheable := exe_tlb_uncacheable(w) && !exe_tlb_miss(w) && !will_fire_ldq_incoming //changes made by tojauch for LSU-v4.0
+      ldq(ldq_idx).bits.addr_is_uncacheable := exe_tlb_uncacheable(w) && !exe_tlb_miss(w) && !will_fire_ldq_incoming(w) //changes made by tojauch for LSU-v4.0
 
 
       assert(!((will_fire_ldq_incoming(w) || will_fire_load_incoming(w)) && ldq_incoming_e(w).bits.addr.valid),
