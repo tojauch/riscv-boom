@@ -41,7 +41,7 @@
 //    - ability to turn off things if VM is disabled
 //    - reconsider port count of the wakeup, retry stuff
 
-//tojauch: 20210531 (LSU-v4.0)
+//tojauch: 20210601 (LSU-v4.0)
 
 package boom.lsu
 
@@ -561,54 +561,10 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
     // Notes on performance
     //  - Prioritize releases, this speeds up cache line writebacks and refills
     //  - Store commits are lowest priority, since they don't "block" younger instructions unless stq fills up
-
-    //##########################################################################################################
-    //modifications made by tojauch (fix LSU-v1.0, LSU-v2.0 and LSU-v4.0):
     
-    /*val test_signal_br_mask_is_zero = RegInit(false.B)
-    val test_signal_otherwise = RegInit(false.B)
-
-      when(exe_req(w).bits.uop.br_mask === 0.U){ //only fire load if it is not speculative (br_mask = zero)
-
-      //load or store instructions exist between operation and ROB head?
-
-      val entry_exists = Wire(Bool())
-      entry_exists := false.B
-
-      //check LAQ/SAQ if entry exists
-      for (i <- 0 until numLdqEntries){
-          when(ldq(i).valid && ldq(i).bits.addr_is_virtual){
-              entry_exists := true.B
-          }
-      }
-
-      for (i <- 0 until numStqEntries){
-          when(stq(i).valid && stq(i).bits.addr_is_virtual){
-              entry_exists := true.B
-          }
-      }
-
-      when(entry_exists){ //load or store between operation and ROB head
-        will_fire_load_incoming (w) := lsu_sched(false.B , true , true , true , false)
-        will_fire_ldq_incoming (w) := lsu_sched(can_fire_load_incoming (w) , true , true , true , false) // TLB , DC , LCAM
-      }.otherwise{
-          test_signal_br_mask_is_zero := true.B
-          test_signal_otherwise := false.B
-          will_fire_load_incoming(w) := lsu_sched(can_fire_load_incoming(w) , true , true , true , false) // TLB , DC , LCAM
-          will_fire_ldq_incoming(w) := lsu_sched(false.B , false , false , false , false) // TLB , DC , LCAM
-      }
-    }.otherwise{
-      test_signal_otherwise := true.B
-      test_signal_br_mask_is_zero := false.B
-      will_fire_load_incoming(w) := lsu_sched(false.B , false , false , false , false)
-      will_fire_ldq_incoming(w) := lsu_sched(can_fire_load_incoming(w) , true , true , true , false) // TLB , DC , LCAM
-    }*/
-
-    // end of modifications
-    //################################################################################
 
     will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , true , true , true , false) // TLB , DC , LCAM
-    will_fire_ldq_incoming  (w) := lsu_sched(can_fire_ldq_incoming  (w) , true , true , true , false) // TLB , DC , LCAM
+    will_fire_ldq_incoming  (w) := lsu_sched(can_fire_ldq_incoming  (w) , false , false , true , false) //    ,    , LCAM
     will_fire_stad_incoming (w) := lsu_sched(can_fire_stad_incoming (w) , true , false, true , true)  // TLB ,    , LCAM , ROB
     will_fire_sta_incoming  (w) := lsu_sched(can_fire_sta_incoming  (w) , true , false, true , true)  // TLB ,    , LCAM , ROB
     will_fire_std_incoming  (w) := lsu_sched(can_fire_std_incoming  (w) , false, false, false, true)  //                 , ROB
@@ -655,6 +611,7 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
 
   val exe_tlb_uop = widthMap(w =>
                     Mux(will_fire_load_incoming (w) ||
+                        will_fire_ldq_incoming  (w) || //changes made by tojauch for LSU-v4.0
                         will_fire_stad_incoming (w) ||
                         will_fire_sta_incoming  (w) ||
                         will_fire_sfence        (w)  , exe_req(w).bits.uop,
@@ -665,6 +622,7 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
 
   val exe_tlb_vaddr = widthMap(w =>
                     Mux(will_fire_load_incoming (w) ||
+                        will_fire_ldq_incoming  (w) || //changes made by tojauch for LSU-v4.0
                         will_fire_stad_incoming (w) ||
                         will_fire_sta_incoming  (w)  , exe_req(w).bits.addr,
                     Mux(will_fire_sfence        (w)  , exe_req(w).bits.sfence.bits.addr,
@@ -912,10 +870,10 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
     {
       val ldq_idx = Mux((will_fire_ldq_incoming(w) || will_fire_load_incoming(w)), ldq_incoming_idx(w), ldq_retry_idx)
       ldq(ldq_idx).bits.addr.valid          := true.B
-      ldq(ldq_idx).bits.addr.bits           := Mux(exe_tlb_miss(w), exe_tlb_vaddr(w), exe_tlb_paddr(w))
+      ldq(ldq_idx).bits.addr.bits           := Mux((exe_tlb_miss(w) || will_fire_ldq_incoming), exe_tlb_vaddr(w), exe_tlb_paddr(w)) //changes made by tojauch for LSU-v4.0
       ldq(ldq_idx).bits.uop.pdst            := exe_tlb_uop(w).pdst
-      ldq(ldq_idx).bits.addr_is_virtual     := exe_tlb_miss(w)
-      ldq(ldq_idx).bits.addr_is_uncacheable := exe_tlb_uncacheable(w) && !exe_tlb_miss(w)
+      ldq(ldq_idx).bits.addr_is_virtual     := Mux(will_fire_ldq_incoming(w), true.B, exe_tlb_miss(w)) //changes made by tojauch for LSU-v4.0
+      ldq(ldq_idx).bits.addr_is_uncacheable := exe_tlb_uncacheable(w) && !exe_tlb_miss(w) && !will_fire_ldq_incoming //changes made by tojauch for LSU-v4.0
 
 
       assert(!((will_fire_ldq_incoming(w) || will_fire_load_incoming(w)) && ldq_incoming_e(w).bits.addr.valid),
