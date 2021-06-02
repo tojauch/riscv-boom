@@ -783,7 +783,7 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
     
     when ((will_fire_load_incoming(w) && (ma_ld(w) || pf_ld(w))) || (will_fire_load_retry(w) && pf_ld(w))) //modification by tojauch for fix LSU-v3.0
     {
-      io.dmem.s1_kill(w) := RegNext(true.B)
+      io.dmem.s1_kill(w) := true.B
     }
 
     when (will_fire_load_incoming(w)) {
