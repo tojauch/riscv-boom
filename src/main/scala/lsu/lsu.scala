@@ -611,7 +611,6 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
 
   val exe_tlb_uop = widthMap(w =>
                     Mux(will_fire_load_incoming (w) ||
-                        //will_fire_ldq_incoming  (w) || //changes made by tojauch for LSU-v4.0
                         will_fire_stad_incoming (w) ||
                         will_fire_sta_incoming  (w) ||
                         will_fire_sfence        (w)  , exe_req(w).bits.uop,
@@ -622,7 +621,6 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
 
   val exe_tlb_vaddr = widthMap(w =>
                     Mux(will_fire_load_incoming (w) ||
-                        //will_fire_ldq_incoming  (w) || //changes made by tojauch for LSU-v4.0
                         will_fire_stad_incoming (w) ||
                         will_fire_sta_incoming  (w)  , exe_req(w).bits.addr,
                     Mux(will_fire_sfence        (w)  , exe_req(w).bits.sfence.bits.addr,
@@ -640,7 +638,6 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
 
   val exe_size   = widthMap(w =>
                    Mux(will_fire_load_incoming (w) ||
-                       //will_fire_ldq_incoming  (w) || //changes made by tojauch for LSU-v4.0
                        will_fire_stad_incoming (w) ||
                        will_fire_sta_incoming  (w) ||
                        will_fire_sfence        (w) ||
@@ -650,7 +647,6 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
                                                       0.U)))
   val exe_cmd    = widthMap(w =>
                    Mux(will_fire_load_incoming (w) ||
-                       //will_fire_ldq_incoming  (w) || //changes made by tojauch for LSU-v4.0
                        will_fire_stad_incoming (w) ||
                        will_fire_sta_incoming  (w) ||
                        will_fire_sfence        (w) ||
@@ -784,16 +780,21 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
     dmem_req(w).bits.is_hella := false.B
 
     io.dmem.s1_kill(w) := false.B
+    
+    when ((will_fire_load_incoming(w) && (ma_ld(w) || pf_ld(w))) || (will_fire_load_retry(w) && pf_ld(w))) //modification by tojauch for fix LSU-v3.0
+    {
+      io.dmem.s1_kill(w) := RegNext(true.B)
+    }
 
     when (will_fire_load_incoming(w)) {
-      dmem_req(w).valid      := !exe_tlb_miss(w) && !exe_tlb_uncacheable(w) && !(ma_ld(w) || pf_ld(w))  //modification by tojauch for fix LSU-v3.0
+      dmem_req(w).valid      := !exe_tlb_miss(w) && !exe_tlb_uncacheable(w)
       dmem_req(w).bits.addr  := exe_tlb_paddr(w)
       dmem_req(w).bits.uop   := exe_tlb_uop(w)
 
       s0_executing_loads(ldq_incoming_idx(w)) := dmem_req_fire(w)
       assert(!ldq_incoming_e(w).bits.executed)
     } .elsewhen (will_fire_load_retry(w)) {
-      dmem_req(w).valid      := !exe_tlb_miss(w) && !exe_tlb_uncacheable(w) && !pf_ld(w)  //modification by tojauch for fix LSU-v3.0
+      dmem_req(w).valid      := !exe_tlb_miss(w) && !exe_tlb_uncacheable(w)
       dmem_req(w).bits.addr  := exe_tlb_paddr(w)
       dmem_req(w).bits.uop   := exe_tlb_uop(w)
 
