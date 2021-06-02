@@ -41,7 +41,7 @@
 //    - ability to turn off things if VM is disabled
 //    - reconsider port count of the wakeup, retry stuff
 
-//tojauch: 20210601 (LSU-v4.0)
+//tojauch: 20210602 (LSU-v4.0)
 
 package boom.lsu
 
@@ -446,7 +446,7 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
   val can_fire_load_incoming = widthMap(w => exe_req(w).valid && exe_req(w).bits.uop.ctrl.is_load && (exe_req(w).bits.uop.br_mask === 0.U))
 
   // Can we queue an incoming load
-  val can_fire_ldq_incoming = widthMap(w => exe_req(w).valid && exe_req(w).bits.uop.ctrl.is_load)
+  val can_fire_ldq_incoming = widthMap(w => exe_req(w).valid && exe_req(w).bits.uop.ctrl.is_load && (exe_req(w).bits.uop.br_mask =/= 0.U))
   
 
   // Can we fire an incoming store addrgen + store datagen
@@ -564,7 +564,7 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
     
 
     will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , true , true , true , false) // TLB , DC , LCAM
-    will_fire_ldq_incoming  (w) := lsu_sched(can_fire_ldq_incoming  (w) , false , false , true , false) //    ,    , LCAM
+    will_fire_ldq_incoming  (w) := lsu_sched(can_fire_ldq_incoming  (w) , false , false , false , false) //    ,    , 
     will_fire_stad_incoming (w) := lsu_sched(can_fire_stad_incoming (w) , true , false, true , true)  // TLB ,    , LCAM , ROB
     will_fire_sta_incoming  (w) := lsu_sched(can_fire_sta_incoming  (w) , true , false, true , true)  // TLB ,    , LCAM , ROB
     will_fire_std_incoming  (w) := lsu_sched(can_fire_std_incoming  (w) , false, false, false, true)  //                 , ROB
@@ -582,8 +582,8 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
 
     when (will_fire_load_wakeup(w)) {
       block_load_mask(ldq_wakeup_idx)           := true.B
-    //} .elsewhen (will_fire_ldq_incoming(w)) { //added by tojauch for fix LSU-v4.0
-      //block_load_mask(exe_req(w).bits.uop.ldq_idx) := true.B
+    } .elsewhen (will_fire_ldq_incoming(w)) { //added by tojauch for fix LSU-v4.0
+      block_load_mask(exe_req(w).bits.uop.ldq_idx) := true.B
     } .elsewhen (will_fire_load_incoming(w)) {
       block_load_mask(exe_req(w).bits.uop.ldq_idx) := true.B
     } .elsewhen (will_fire_load_retry(w)) {
@@ -611,7 +611,7 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
 
   val exe_tlb_uop = widthMap(w =>
                     Mux(will_fire_load_incoming (w) ||
-                        will_fire_ldq_incoming  (w) || //changes made by tojauch for LSU-v4.0
+                        //will_fire_ldq_incoming  (w) || //changes made by tojauch for LSU-v4.0
                         will_fire_stad_incoming (w) ||
                         will_fire_sta_incoming  (w) ||
                         will_fire_sfence        (w)  , exe_req(w).bits.uop,
@@ -622,7 +622,7 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
 
   val exe_tlb_vaddr = widthMap(w =>
                     Mux(will_fire_load_incoming (w) ||
-                        will_fire_ldq_incoming  (w) || //changes made by tojauch for LSU-v4.0
+                        //will_fire_ldq_incoming  (w) || //changes made by tojauch for LSU-v4.0
                         will_fire_stad_incoming (w) ||
                         will_fire_sta_incoming  (w)  , exe_req(w).bits.addr,
                     Mux(will_fire_sfence        (w)  , exe_req(w).bits.sfence.bits.addr,
@@ -640,6 +640,7 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
 
   val exe_size   = widthMap(w =>
                    Mux(will_fire_load_incoming (w) ||
+                       //will_fire_ldq_incoming  (w) || //changes made by tojauch for LSU-v4.0
                        will_fire_stad_incoming (w) ||
                        will_fire_sta_incoming  (w) ||
                        will_fire_sfence        (w) ||
@@ -649,6 +650,7 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
                                                       0.U)))
   val exe_cmd    = widthMap(w =>
                    Mux(will_fire_load_incoming (w) ||
+                       //will_fire_ldq_incoming  (w) || //changes made by tojauch for LSU-v4.0
                        will_fire_stad_incoming (w) ||
                        will_fire_sta_incoming  (w) ||
                        will_fire_sfence        (w) ||
@@ -866,17 +868,31 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
     //-------------------------------------------------------------
 
     // Write Addr into the LAQ/SAQ
-    when (will_fire_ldq_incoming(w) || will_fire_load_incoming(w) || will_fire_load_retry(w)) //changes made by tojauch for LSU-v4.0
+    when (will_fire_load_incoming(w) || will_fire_load_retry(w)) 
     {
-      val ldq_idx = Mux((will_fire_ldq_incoming(w) || will_fire_load_incoming(w)), ldq_incoming_idx(w), ldq_retry_idx)
+      val ldq_idx = Mux(will_fire_load_incoming(w), ldq_incoming_idx(w), ldq_retry_idx)
       ldq(ldq_idx).bits.addr.valid          := true.B
-      ldq(ldq_idx).bits.addr.bits           := Mux((exe_tlb_miss(w) || will_fire_ldq_incoming(w)), exe_tlb_vaddr(w), exe_tlb_paddr(w)) //changes made by tojauch for LSU-v4.0
+      ldq(ldq_idx).bits.addr.bits           := Mux(exe_tlb_miss(w), exe_tlb_vaddr(w), exe_tlb_paddr(w)) 
       ldq(ldq_idx).bits.uop.pdst            := exe_tlb_uop(w).pdst
-      ldq(ldq_idx).bits.addr_is_virtual     := Mux(will_fire_ldq_incoming(w), true.B, exe_tlb_miss(w)) //changes made by tojauch for LSU-v4.0
-      ldq(ldq_idx).bits.addr_is_uncacheable := exe_tlb_uncacheable(w) && !exe_tlb_miss(w) && !will_fire_ldq_incoming(w) //changes made by tojauch for LSU-v4.0
+      ldq(ldq_idx).bits.addr_is_virtual     := exe_tlb_miss(w)
+      ldq(ldq_idx).bits.addr_is_uncacheable := exe_tlb_uncacheable(w) && !exe_tlb_miss(w)
 
 
-      assert(!((will_fire_ldq_incoming(w) || will_fire_load_incoming(w)) && ldq_incoming_e(w).bits.addr.valid),
+      assert(!((will_fire_load_incoming(w)) && ldq_incoming_e(w).bits.addr.valid),
+        "[lsu] Incoming load is overwriting a valid address")
+    }
+    
+    when (will_fire_ldq_incoming(w)) //changes made by tojauch for LSU-v4.0
+    {
+      val ldq_idx = ldq_incoming_idx(w)
+      ldq(ldq_idx).bits.addr.valid          := true.B
+      ldq(ldq_idx).bits.addr.bits           := exe_req(w).bits.addr
+      ldq(ldq_idx).bits.uop.pdst            := exe_req(w).bits.uop.pdst
+      ldq(ldq_idx).bits.addr_is_virtual     := true.B
+      ldq(ldq_idx).bits.addr_is_uncacheable := false.B
+
+
+      assert(!((will_fire_ldq_incoming(w)  && ldq_incoming_e(w).bits.addr.valid),
         "[lsu] Incoming load is overwriting a valid address")
     }
 
