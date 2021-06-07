@@ -41,7 +41,7 @@
 //    - ability to turn off things if VM is disabled
 //    - reconsider port count of the wakeup, retry stuff
 
-//tojauch: 20210602 (LSU-v4.0)
+//tojauch: 20210607 (LSU-v4.0)
 
 package boom.lsu
 
@@ -787,14 +787,14 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
     }
 
     when (will_fire_load_incoming(w)) {
-      dmem_req(w).valid      := !exe_tlb_miss(w) && !exe_tlb_uncacheable(w) && !(ma_ld(w) || pf_ld(w))
+      dmem_req(w).valid      := !exe_tlb_miss(w) && !exe_tlb_uncacheable(w) //&& !(ma_ld(w) || pf_ld(w)) //modification by tojauch for fix LSU-v3.0
       dmem_req(w).bits.addr  := exe_tlb_paddr(w)
       dmem_req(w).bits.uop   := exe_tlb_uop(w)
 
       s0_executing_loads(ldq_incoming_idx(w)) := dmem_req_fire(w)
       assert(!ldq_incoming_e(w).bits.executed)
     } .elsewhen (will_fire_load_retry(w)) {
-      dmem_req(w).valid      := !exe_tlb_miss(w) && !exe_tlb_uncacheable(w) && !pf_ld(w)
+      dmem_req(w).valid      := !exe_tlb_miss(w) && !exe_tlb_uncacheable(w) //&& !pf_ld(w) //modification by tojauch for fix LSU-v3.0
       dmem_req(w).bits.addr  := exe_tlb_paddr(w)
       dmem_req(w).bits.uop   := exe_tlb_uop(w)
 
