@@ -769,7 +769,7 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
 
   val s0_executing_loads = WireInit(VecInit((0 until numLdqEntries).map(x=>false.B)))
 
-  val failed_loads     = WireInit(VecInit((0 until numLdqEntries).map(x=>false.B))) // Loads which we will report as failures (throws a mini-exception)
+  //val failed_loads     = WireInit(VecInit((0 until numLdqEntries).map(x=>false.B))) // Loads which we will report as failures (throws a mini-exception)
 
 
   for (w <- 0 until memWidth) {
@@ -781,20 +781,15 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
 
     io.dmem.s1_kill(w) := false.B
     
-    when ((will_fire_load_incoming(w) && (ma_ld(w) || pf_ld(w))) || (will_fire_load_retry(w) && pf_ld(w))) //modification by tojauch for fix LSU-v3.0
-    {
-      io.dmem.s1_kill(w) := true.B
-    }
-
     when (will_fire_load_incoming(w)) {
-      dmem_req(w).valid      := !exe_tlb_miss(w) && !exe_tlb_uncacheable(w) //&& !(ma_ld(w) || pf_ld(w)) //modification by tojauch for fix LSU-v3.0
+      dmem_req(w).valid      := !exe_tlb_miss(w) && !exe_tlb_uncacheable(w) && !(ma_ld(w) || pf_ld(w)) //modification by tojauch for fix LSU-v3.0
       dmem_req(w).bits.addr  := exe_tlb_paddr(w)
       dmem_req(w).bits.uop   := exe_tlb_uop(w)
 
       s0_executing_loads(ldq_incoming_idx(w)) := dmem_req_fire(w)
       assert(!ldq_incoming_e(w).bits.executed)
     } .elsewhen (will_fire_load_retry(w)) {
-      dmem_req(w).valid      := !exe_tlb_miss(w) && !exe_tlb_uncacheable(w) //&& !pf_ld(w) //modification by tojauch for fix LSU-v3.0
+      dmem_req(w).valid      := !exe_tlb_miss(w) && !exe_tlb_uncacheable(w) && !pf_ld(w) //modification by tojauch for fix LSU-v3.0
       dmem_req(w).bits.addr  := exe_tlb_paddr(w)
       dmem_req(w).bits.uop   := exe_tlb_uop(w)
 
@@ -861,7 +856,7 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
     when (will_fire_load_incoming(w) || will_fire_ldq_incoming(w) || will_fire_load_retry(w))
     {
       ldq(ldq_idx).bits.failure := (((will_fire_load_incoming(w) || will_fire_ldq_incoming(w)) && (ma_ld(w) || pf_ld(w))) || (will_fire_load_retry(w) && pf_ld(w)))
-      failed_loads(ldq_idx) := (((will_fire_load_incoming(w) || will_fire_ldq_incoming(w)) && (ma_ld(w) || pf_ld(w))) || (will_fire_load_retry(w) && pf_ld(w)))
+      //failed_loads(ldq_idx) := (((will_fire_load_incoming(w) || will_fire_ldq_incoming(w)) && (ma_ld(w) || pf_ld(w))) || (will_fire_load_retry(w) && pf_ld(w)))
     }
 
     //##################################################################################################################
@@ -1102,7 +1097,7 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
   // Mask of stores which we can forward from
   val ldst_forward_matches = WireInit(widthMap(w => VecInit((0 until numStqEntries).map(x=>false.B))))
 
-  //val failed_loads     = WireInit(VecInit((0 until numLdqEntries).map(x=>false.B))) // Loads which we will report as failures (throws a mini-exception)
+  val failed_loads     = WireInit(VecInit((0 until numLdqEntries).map(x=>false.B))) // Loads which we will report as failures (throws a mini-exception)
   val nacking_loads    = WireInit(VecInit((0 until numLdqEntries).map(x=>false.B))) // Loads which are being nacked by dcache in the next stage
 
   val s1_executing_loads = RegNext(s0_executing_loads)

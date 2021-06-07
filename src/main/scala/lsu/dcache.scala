@@ -601,8 +601,8 @@ class BoomNonBlockingDCacheModule(outer: BoomNonBlockingDCache) extends LazyModu
                          !(io.lsu.exception && s0_req(w).uop.uses_ldq)   &&
                          !(s2_store_failed && io.lsu.req.fire() && s0_req(w).uop.uses_stq),
                          init=false.B))
-  //for (w <- 0 until memWidth)
-    //assert(!(io.lsu.s1_kill(w) && !RegNext(io.lsu.req.fire()) && !RegNext(io.lsu.req.bits(w).valid)))
+  for (w <- 0 until memWidth)
+    assert(!(io.lsu.s1_kill(w) && !RegNext(io.lsu.req.fire()) && !RegNext(io.lsu.req.bits(w).valid)))
   val s1_addr         = s1_req.map(_.addr)
   val s1_nack         = s1_addr.map(a => a(idxMSB,idxLSB) === prober.io.meta_write.bits.idx && !prober.io.req.ready)
   val s1_send_resp_or_nack = RegNext(s0_send_resp_or_nack)
