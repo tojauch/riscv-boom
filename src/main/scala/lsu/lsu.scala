@@ -564,7 +564,7 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
     
 
     will_fire_load_incoming (w) := lsu_sched(can_fire_load_incoming (w) , true , true , true , false) // TLB , DC , LCAM
-    will_fire_ldq_incoming  (w) := lsu_sched(can_fire_ldq_incoming  (w) , false , false , false , false) //    ,    , 
+    will_fire_ldq_incoming  (w) := lsu_sched(can_fire_ldq_incoming  (w) , true , false , false , false) // TLB,    ,
     will_fire_stad_incoming (w) := lsu_sched(can_fire_stad_incoming (w) , true , false, true , true)  // TLB ,    , LCAM , ROB
     will_fire_sta_incoming  (w) := lsu_sched(can_fire_sta_incoming  (w) , true , false, true , true)  // TLB ,    , LCAM , ROB
     will_fire_std_incoming  (w) := lsu_sched(can_fire_std_incoming  (w) , false, false, false, true)  //                 , ROB
@@ -939,6 +939,7 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
   val stdf_killed = IsKilledByBranch(io.core.brupdate, io.core.fp_stdata.bits.uop)
 
   val fired_load_incoming  = widthMap(w => RegNext(will_fire_load_incoming(w) && !exe_req_killed(w)))
+  val fired_ldq_incoming  = widthMap(w => RegNext(will_fire_ldq_incoming(w) && !exe_req_killed(w))) //modifications made by tojauch for fix LSU-v4.0
   val fired_stad_incoming  = widthMap(w => RegNext(will_fire_stad_incoming(w) && !exe_req_killed(w)))
   val fired_sta_incoming   = widthMap(w => RegNext(will_fire_sta_incoming (w) && !exe_req_killed(w)))
   val fired_std_incoming   = widthMap(w => RegNext(will_fire_std_incoming (w) && !exe_req_killed(w)))
@@ -959,7 +960,7 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
   val mem_ldq_retry_e      = RegNext(UpdateBrMask(io.core.brupdate, ldq_retry_e))
   val mem_stq_retry_e      = RegNext(UpdateBrMask(io.core.brupdate, stq_retry_e))
   val mem_ldq_e            = widthMap(w =>
-                             Mux(fired_load_incoming(w), mem_ldq_incoming_e(w),
+                             Mux(fired_load_incoming(w) || fired_ldq_incoming(w), mem_ldq_incoming_e(w), //modifications made by tojauch for fix LSU-v4.0
                              Mux(fired_load_retry   (w), mem_ldq_retry_e,
                              Mux(fired_load_wakeup  (w), mem_ldq_wakeup_e, (0.U).asTypeOf(Valid(new LDQEntry))))))
   val mem_stq_e            = widthMap(w =>
@@ -1060,7 +1061,7 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
   // We translated a store last cycle
   val do_st_search = widthMap(w => (fired_stad_incoming(w) || fired_sta_incoming(w) || fired_sta_retry(w)) && !mem_tlb_miss(w))
   // We translated a load last cycle
-  val do_ld_search = widthMap(w => ((fired_load_incoming(w) || fired_load_retry(w)) && !mem_tlb_miss(w)) ||
+  val do_ld_search = widthMap(w => ((fired_load_incoming(w) || fired_load_retry(w) || fired_ldq_incoming(w)) && !mem_tlb_miss(w)) || //modifications made by tojauch for fix LSU-v4.0
                      fired_load_wakeup(w))
   // We are making a local line visible to other harts
   val do_release_search = widthMap(w => fired_release(w))
@@ -1080,7 +1081,7 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
   val lcam_st_dep_mask = widthMap(w => mem_ldq_e(w).bits.st_dep_mask)
   val lcam_is_release = widthMap(w => fired_release(w))
   val lcam_ldq_idx  = widthMap(w =>
-                      Mux(fired_load_incoming(w), mem_incoming_uop(w).ldq_idx,
+                      Mux(fired_load_incoming(w) || fired_ldq_incoming(w), mem_incoming_uop(w).ldq_idx, //modifications made by tojauch for fix LSU-v4.0
                       Mux(fired_load_wakeup  (w), RegNext(ldq_wakeup_idx),
                       Mux(fired_load_retry   (w), RegNext(ldq_retry_idx), 0.U))))
   val lcam_stq_idx  = widthMap(w =>
@@ -1089,7 +1090,7 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
                       Mux(fired_sta_retry    (w), RegNext(stq_retry_idx), 0.U)))
 
   val can_forward = WireInit(widthMap(w =>
-    Mux(fired_load_incoming(w) || fired_load_retry(w), !mem_tlb_uncacheable(w),
+    Mux(fired_load_incoming(w) || fired_load_retry(w) || fired_ldq_incoming(w), !mem_tlb_uncacheable(w), //modifications made by tojauch for fix LSU-v4.0
       !ldq(lcam_ldq_idx(w)).bits.addr_is_uncacheable)))
 
   // Mask of stores which we conflict on address with
