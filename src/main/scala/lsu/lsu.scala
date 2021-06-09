@@ -41,7 +41,7 @@
 //    - ability to turn off things if VM is disabled
 //    - reconsider port count of the wakeup, retry stuff
 
-//tojauch: 20210609 (LSU-v4.0)
+//tojauch: 20210609 (LSU-v4.1)
 
 package boom.lsu
 
@@ -403,7 +403,7 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
   val p1_block_load_mask = RegNext(block_load_mask)
   val p2_block_load_mask = RegNext(p1_block_load_mask)
 
- // Prioritize emptying the store queue when it is almost full
+  // Prioritize emptying the store queue when it is almost full
   val stq_almost_full = RegNext(WrapInc(WrapInc(st_enq_idx, numStqEntries), numStqEntries) === stq_head ||
                                 WrapInc(st_enq_idx, numStqEntries) === stq_head)
 
@@ -520,6 +520,7 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
                               !store_needs_order                                       &&
                               !block_load_wakeup                                       && 
                               !ldq_wakeup_e.bits.failure                               && // added by tojauch for fix LSU-v3.0
+                              (ldq_wakeup_e.bits.uop.br_mask === 0.U)                  && // added by tojauch for fix LSU-v4.1
                               (w == memWidth-1).B                                      &&
                               (!ldq_wakeup_e.bits.addr_is_uncacheable || (io.core.commit_load_at_rob_head &&
                                                                           ldq_head === ldq_wakeup_idx &&
