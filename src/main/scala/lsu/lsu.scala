@@ -41,7 +41,7 @@
 //    - ability to turn off things if VM is disabled
 //    - reconsider port count of the wakeup, retry stuff
 
-//tojauch: 20210610 (LSU-v4.1)
+//tojauch: 20210616 (LSU-v4.1)
 
 package boom.lsu
 
@@ -443,10 +443,10 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
   // Determine what can fire
 
   // Can we fire an incoming load
-  val can_fire_load_incoming = widthMap(w => exe_req(w).valid && exe_req(w).bits.uop.ctrl.is_load && (exe_req(w).bits.uop.br_mask === 0.U))
+  val can_fire_load_incoming = widthMap(w => exe_req(w).valid && exe_req(w).bits.uop.ctrl.is_load && (exe_req(w).bits.uop.br_mask === 0.U)) //modification by tojauch for fix LSU-v4.0
 
   // Can we queue an incoming load
-  val can_fire_ldq_incoming = widthMap(w => exe_req(w).valid && exe_req(w).bits.uop.ctrl.is_load && (exe_req(w).bits.uop.br_mask =/= 0.U))
+  val can_fire_ldq_incoming = widthMap(w => exe_req(w).valid && exe_req(w).bits.uop.ctrl.is_load && (exe_req(w).bits.uop.br_mask =/= 0.U)) //modification by tojauch for fix LSU-v4.0
   
 
   // Can we fire an incoming store addrgen + store datagen
@@ -940,7 +940,6 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
   val stdf_killed = IsKilledByBranch(io.core.brupdate, io.core.fp_stdata.bits.uop)
 
   val fired_load_incoming  = widthMap(w => RegNext(will_fire_load_incoming(w) && !exe_req_killed(w)))
-  //val fired_ldq_incoming   = widthMap(w => RegNext(will_fire_ldq_incoming(w) && !exe_req_killed(w))) //modifications made by tojauch for fix LSU-v4.0
   val fired_stad_incoming  = widthMap(w => RegNext(will_fire_stad_incoming(w) && !exe_req_killed(w)))
   val fired_sta_incoming   = widthMap(w => RegNext(will_fire_sta_incoming (w) && !exe_req_killed(w)))
   val fired_std_incoming   = widthMap(w => RegNext(will_fire_std_incoming (w) && !exe_req_killed(w)))
