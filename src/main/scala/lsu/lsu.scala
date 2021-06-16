@@ -41,7 +41,7 @@
 //    - ability to turn off things if VM is disabled
 //    - reconsider port count of the wakeup, retry stuff
 
-//tojauch: 20210616 (LSU-v4.1)
+//tojauch: 20210616 (LSU-v4.2)
 
 package boom.lsu
 
@@ -481,7 +481,8 @@ class LSU(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule()(p)
                                 (w == memWidth-1).B                           && // TODO: Is this best scheduling?
                                 !ldq_retry_e.bits.order_fail                  &&
                                 !ldq_retry_e.bits.failure)                    && // added by tojauch for fix LSU-v3.0
-                                (ldq_retry_e.bits.uop.br_mask === 0.U))          // added by tojauch for fix LSU-v4.1
+                                (ldq_retry_e.bits.uop.br_mask === 0.U)        && // added by tojauch for fix LSU-v4.1
+                                (exe_req(w).bits.uop.br_mask === 0.U))           // added by tojauch for fix LSU-v4.2
 
   // Can we retry a store addrgen that missed in the TLB
   // - Weird edge case when sta_retry and std_incoming for same entry in same cycle. Delay this
